@@ -23,17 +23,20 @@ Promise.all( [ loadWindow, loadWOFF2Module ] ).then(start, fail).catch(fail);
 function start( [ evtWindow, WOFF2 ] ) {
   console.log("start");
   const btnOpenFile = document.createElement("button");
+  btnOpenFile.innerHTML = "Open File";
   btnOpenFile.addEventListener("click", btnOpenFileHandler);
   document.body.appendChild(btnOpenFile);
   function btnOpenFileHandler(evt) {
     const inpFile = document.createElement("input");
     inpFile.type = "file";
+    inpFile.style.display = "none";
     inpFile.addEventListener("input", function (evt) {
       const file = inpFile.files[0];
       file.arrayBuffer().then(parse).then(display, fail);
       inpFile.remove();
     });
     document.body.appendChild(inpFile);
+    inpFile.click();
   }
 }
 
@@ -75,8 +78,8 @@ function parse(buffer) {
   const privOffset = view.getUint32(0x28, false);
   // Length of private data block.
   const privLength = view.getUint32(0x2C, false);
-  obj.metadataBlock = new Uint8Array(buffer, metaOffset, metaOffset + metaLength);
-  obj.privateData = new Uint8Array(buffer, privOffset, privOffset + privLength);
+  obj.metadataBlock = new Uint8Array(buffer, metaOffset, metaLength);
+  obj.privateData = new Uint8Array(buffer, privOffset, privLength);
   obj.tableDirectory = [];
   for (let i = 0; i < numTables; ++i) {
     const tableDirectoryEntry = {};
@@ -110,7 +113,7 @@ function parse(buffer) {
   const compressedDataOffset = offset;
   for (let i = 0; i < numTables; ++i) {
     const tableDirectoryEntry = obj.tableDirectory[i];
-    tableDirectoryEntry.view = new Uint8Array(buffer, offset, offset + tableDirectoryEntry.transformLength);
+    tableDirectoryEntry.view = new Uint8Array(buffer, offset, tableDirectoryEntry.transformLength);
     offset += tableDirectoryEntry.transformLength;
   }
   const compressedDataLength = offset - compressedDataOffset;
