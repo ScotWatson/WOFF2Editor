@@ -84,8 +84,9 @@ function parse(buffer) {
   obj.tableDirectory = [];
   for (let i = 0; i < numTables; ++i) {
     const tableDirectoryEntry = {};
-    tableDirectoryEntry.flags = getUint8();
-    const tagIndex = (tableDirectoryEntry.flags & 0x3F);
+    const flags = getUint8();
+    const tagIndex = (flags & 0x3F);
+    tableDirectoryEntry.transform = (flags >> 6);
     tableDirectoryEntry.tag = ((tagIndex !== 0x3F) ? tagNames[tagIndex] : get4Char());
     tableDirectoryEntry.origLength = getUintBase128();
     tableDirectoryEntry.transformLength = getUintBase128();
