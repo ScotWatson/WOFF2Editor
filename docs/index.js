@@ -6,9 +6,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 const initPageTime = performance.now();
 
 const loadWOFF2Module = import("https://scotwatson.github.io/WOFF2Editor/WOFF2.mjs");
-loadWOFF2Module.then(function (module) {
+loadWOFF2Module.then(reportModule, fail);
+
+function reportModule(module) {
   console.log(Object.getOwnPropertyNames(module));
-}, fail);
+}
 
 const loadWindow = new Promise(function (resolve, reject) {
   window.addEventListener("load", function (evt) {
@@ -29,6 +31,7 @@ function start( [ evtWindow, WOFF2 ] ) {
     });
     document.body.appendChild(inpFile);
   });
+  document.body.appendChild(btnOpenFile);
 }
 
 function display(obj) {
