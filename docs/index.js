@@ -41,6 +41,7 @@ function start( [ evtWindow, WOFF2 ] ) {
 }
 
 function display(obj) {
+  console.log(obj);
   document.write(JSON.stringify(obj));
 }
 
@@ -118,7 +119,7 @@ function parse(buffer) {
   }
   const compressedDataLength = offset - compressedDataOffset;
   if (totalCompressedSize !== compressedDataLength) {
-    throw new Error("Malformed File: " + " totalCompressedSize: " + totalCompressedSize + " compressedDataLength: " + compressedDataLength);
+    console.warn("Malformed File: " + " totalCompressedSize: " + totalCompressedSize + " compressedDataLength: " + compressedDataLength);
   }
   return obj;
   function get255UInt16() {
