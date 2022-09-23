@@ -21,17 +21,20 @@ const loadWindow = new Promise(function (resolve, reject) {
 Promise.all( [ loadWindow, loadWOFF2Module ] ).then(start, fail).catch(fail);
 
 function start( [ evtWindow, WOFF2 ] ) {
+  console.log("start");
   const btnOpenFile = document.createElement("button");
-  btnOpenFile.addEventListener("click", function () {
+  btnOpenFile.addEventListener("click", btnOpenFileHandler);
+  document.body.appendChild(btnOpenFile);
+  function btnOpenFileHandler(evt) {
     const inpFile = document.createElement("input");
     inpFile.type = "file";
-    inpFile.addEventListener("input", function () {
+    inpFile.addEventListener("input", function (evt) {
       const file = inpFile.files[0];
       file.arrayBuffer().then(parse).then(display, fail);
+      inpFile.remove();
     });
     document.body.appendChild(inpFile);
-  });
-  document.body.appendChild(btnOpenFile);
+  }
 }
 
 function display(obj) {
@@ -88,7 +91,7 @@ function parse(buffer) {
     // The Version of the TTC Header in the original font.
     obj.collectionDirectoryVersion = getUInt32();
     // The number of fonts in the collection.
-	  const numFonts = get255UInt16();
+    const numFonts = get255UInt16();
     obj.collectionDirectory = [];
     for (let i = 0; i < numFonts; ++i) {
       const collectionDirectoryEntry = {};
