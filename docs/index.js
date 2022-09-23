@@ -118,7 +118,7 @@ function parse(buffer) {
   }
   const compressedDataLength = offset - compressedDataOffset;
   if (totalCompressedSize !== compressedDataLength) {
-    throw new Error("Malformed File");
+    throw new Error("Malformed File: " + " totalCompressedSize: " + totalCompressedSize + " compressedDataLength: " + compressedDataLength);
   }
   return obj;
   function get255UInt16() {
