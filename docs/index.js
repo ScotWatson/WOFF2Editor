@@ -25,23 +25,28 @@ function start( [ evtWindow, WOFF2 ] ) {
     inpFile.type = "file";
     inpFile.addEventListener("input", function () {
       const file = inpFile.files[0];
-      file.arrayBuffer().then(parse);
+      file.arrayBuffer().then(parse).then(display, fail);
     });
     document.body.appendChild(inpFile);
   });
+}
+
+function display(obj) {
+  document.write(JSON.stringify(obj));
 }
 
 const tagNames = [ "cmap", "head", "hhea", "hmtx", "maxp", "name", "OS/2", "post", "cvt ", "fpgm", "glyf", "loca", "prep", "CFF ", "VORG", "EBDT", "EBLC", "gasp", "hdmx", "kern", "LTSH", "PCLT", "VDMX", "vhea", "vmtx", "BASE", "GDEF", "GPOS", "GSUB", "EBSC", "JSTF", "MATH", "CBDT", "CBLC", "COLR", "CPAL", "SVG ", "sbix", "acnt", "avar", "bdat", "bloc", "bsln", "cvar", "fdsc", "feat", "fmtx", "fvar", "gvar", "hsty", "just", "lcar", "mort", "morx", "opbd", "prop", "trak", "Zapf", "Silf", "Glat", "Gloc", "Feat", "Sill" ];
 
 function parse(buffer) {
   let offset = 0;
+  let obj = {};
   const view = new DataView(buffer);
   const signature = view.getUint32(0, false);
   if (signature !== 0x774F4632) {  //'wOF2'
     throw new Error("Invalid Signature");
   }
   // The "sfnt version" of the input font.
-  const flavor = view.getUint32(0x04, false);
+  obj.flavor = view.getUint32(0x04, false);
   // Total size of the WOFF file.
   const length = view.getUint32(0x08, false);
   // Number of entries in directory of font tables.
@@ -51,9 +56,9 @@ function parse(buffer) {
   // Total length of the compressed data block.
   const totalCompressedSize = view.getUint32(0x14, false);
   // Major version of the WOFF file.
-  const majorVersion = view.getUint16(0x18, false);
+  obj.majorVersion = view.getUint16(0x18, false);
   // Minor version of the WOFF file.
-  const minorVersion = view.getUint16(0x1A, false);
+  obj.minorVersion = view.getUint16(0x1A, false);
   // Offset to metadata block, from beginning of WOFF file.
   const metaOffset = view.getUint32(0x1C, false);
   // Length of compressed metadata block.
@@ -64,12 +69,69 @@ function parse(buffer) {
   const privOffset = view.getUint32(0x28, false);
   // Length of private data block.
   const privLength = view.getUint32(0x2C, false);
+  obj.metadataBlock = new Uint8Array(buffer, metaOffset, metaOffset + metaLength);
+  obj.privateData = new Uint8Array(buffer, privOffset, privOffset + privLength);
+  obj.tableDirectory = [];
   for (let i = 0; i < numTables; ++i) {
-    const flags = getUint8();
+    const tableDirectoryEntry = {};
+    tableDirectoryEntry.flags = getUint8();
     const tagIndex = (flags & 0x3F);
-    const tag = ((tagIndex !== 0x3F) ? tagNames[tagIndex] : get4Char());
-    const origLength = getUintBase128();
-    const transformLength = getUintBase128();
+    tableDirectoryEntry.tag = ((tagIndex !== 0x3F) ? tagNames[tagIndex] : get4Char());
+    tableDirectoryEntry.origLength = getUintBase128();
+    tableDirectoryEntry.transformLength = getUintBase128();
+    obj.tableDirectory.push(tableDirectoryEntry);
+  }
+  if (obj.flavor === 0x74746366) { // "ttcf"
+    // The Version of the TTC Header in the original font.
+    obj.collectionDirectoryVersion = getUInt32();
+    // The number of fonts in the collection.
+	  const numFonts = get255UInt16();
+    obj.collectionDirectory = [];
+    for (let i = 0; i < numFonts; ++i) {
+      const collectionDirectoryEntry = {};
+      // The number of tables in this font
+      collectionDirectoryEntry.numTables = get255UInt16();
+      // The "sfnt version" of the font
+      collectionDirectoryEntry.flavor = getUInt32();
+      collectionDirectoryEntry.indexes = [];
+      // The index identifying an entry in the Table Directory for each table in this font (where the index of the first Table Directory entry is zero.)
+      for (let j = 0; j < numTables; ++j) {
+        collectionDirectoryEntry.indexes.push(get255UInt16());
+      }
+      obj.collectionDirectory.push(collectionDirectoryEntry);
+    }
+  }
+  const compressedDataOffset = offset;
+  for (let i = 0; i < numTables; ++i) {
+    const tableDirectoryEntry = obj.tableDirectory[i];
+    tableDirectoryEntry.view = new Uint8Array(buffer, offset, offset + tableDirectoryEntry.transformLength);
+    offset += tableDirectoryEntry.transformLength;
+  }
+  const compressedDataLength = offset - compressedDataOffset;
+  if (totalCompressedSize !== compressedDataLength) {
+    throw new Error("Malformed File");
+  }
+  return obj;
+  function get255UInt16() {
+    let code;
+    let value, value2;
+    code = getUint8();
+    if ( code === 0xFD ) {
+      value = getUint8();
+      value <<= 8;
+      value &= 0xFF00;
+      value2 = getUint8();
+      value |= value2 & 0x00FF;
+    } else if ( code === 0xFE ) {
+      value = getUint8();
+      value = (value + 0xFD);
+    } else if ( code === 0xFF ) {
+      value = getUint8();
+      value = (value + 0xFD * 2);
+    } else {
+      value = code;
+    }
+    return value;
   }
   function get4Char() {
     let ret = "";
